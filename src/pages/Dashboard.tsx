@@ -10,18 +10,18 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background flex w-full">
       <DashboardSidebar />
       
-      <div className="flex-1 ml-64">
+      <div className="flex-1 lg:ml-64">
         <DashboardHeader />
         
-        <main className="p-6">
+        <main className="p-4 sm:p-6">
           {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Dashboard</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Welcome back! Here's what's happening today.</p>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
             <StatsCard
               title="Total Bookings"
               value="1,284"
@@ -57,7 +57,7 @@ const Dashboard = () => {
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="lg:col-span-2">
               <RecentBookings />
             </div>
