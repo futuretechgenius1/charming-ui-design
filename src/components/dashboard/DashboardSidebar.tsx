@@ -12,25 +12,73 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  X
+  X,
+  MessageSquare,
+  Headphones,
+  DollarSign,
+  Link2,
+  Clock,
+  Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: Package, label: "Bookings", path: "/dashboard/bookings" },
-  { icon: Truck, label: "Fleet", path: "/dashboard/fleet" },
-  { icon: MapPin, label: "Routes", path: "/dashboard/routes" },
-  { icon: Calculator, label: "Pricing", path: "/dashboard/pricing" },
-  { icon: Users, label: "Users", path: "/dashboard/users" },
-  { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
-];
+interface DashboardSidebarProps {
+  role?: "admin" | "support" | "affiliate" | "customer" | "provider";
+}
 
-const DashboardSidebar = () => {
+const getMenuItems = (role: string) => {
+  switch (role) {
+    case "support":
+      return [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/support" },
+        { icon: MessageSquare, label: "Tickets", path: "/support/tickets" },
+        { icon: Headphones, label: "Live Chat", path: "/support/chat" },
+        { icon: Package, label: "Bookings", path: "/support/bookings" },
+        { icon: Users, label: "Customers", path: "/support/customers" },
+      ];
+    case "affiliate":
+      return [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/affiliate" },
+        { icon: DollarSign, label: "Commissions", path: "/affiliate/commissions" },
+        { icon: Link2, label: "Referrals", path: "/affiliate/referrals" },
+        { icon: Package, label: "Bookings", path: "/affiliate/bookings" },
+        { icon: BarChart3, label: "Analytics", path: "/affiliate/analytics" },
+      ];
+    case "customer":
+      return [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/customer" },
+        { icon: Package, label: "My Bookings", path: "/customer/bookings" },
+        { icon: MapPin, label: "Track Shipment", path: "/customer/tracking" },
+        { icon: Clock, label: "History", path: "/customer/history" },
+        { icon: Wallet, label: "Payments", path: "/customer/payments" },
+      ];
+    case "provider":
+      return [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/provider" },
+        { icon: Truck, label: "My Fleet", path: "/provider/fleet" },
+        { icon: Package, label: "Bookings", path: "/provider/bookings" },
+        { icon: MapPin, label: "Routes", path: "/provider/routes" },
+        { icon: DollarSign, label: "Earnings", path: "/provider/earnings" },
+      ];
+    default: // admin
+      return [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+        { icon: Package, label: "Bookings", path: "/dashboard/bookings" },
+        { icon: Truck, label: "Fleet", path: "/dashboard/fleet" },
+        { icon: MapPin, label: "Routes", path: "/dashboard/routes" },
+        { icon: Calculator, label: "Pricing", path: "/dashboard/pricing" },
+        { icon: Users, label: "Users", path: "/dashboard/users" },
+        { icon: BarChart3, label: "Analytics", path: "/dashboard/analytics" },
+      ];
+  }
+};
+
+const DashboardSidebar = ({ role = "admin" }: DashboardSidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const menuItems = getMenuItems(role);
 
   return (
     <>

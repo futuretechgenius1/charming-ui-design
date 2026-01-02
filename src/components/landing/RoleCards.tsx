@@ -24,7 +24,7 @@ const roles = [
     description: "Manual booking assistance, issue resolution, and customer service operations.",
     features: ["Manual Bookings", "Route Change Handling", "Provider Reassignment", "Escalation Management"],
     color: "from-purple-500 to-purple-600",
-    link: "/dashboard"
+    link: "/support"
   },
   {
     icon: Users2,
@@ -32,7 +32,7 @@ const roles = [
     description: "Resell logistics services with custom pricing and earn commissions on bookings.",
     features: ["Custom Pricing", "Commission Tracking", "Booking Dashboard", "Revenue Analytics"],
     color: "from-amber-500 to-orange-500",
-    link: "/dashboard"
+    link: "/affiliate"
   },
   {
     icon: UserCircle,
@@ -40,7 +40,7 @@ const roles = [
     description: "Self-serve logistics booking with tracking, history, and seamless payment.",
     features: ["Route Search", "Instant Booking", "Live Tracking", "Booking History"],
     color: "from-teal-500 to-emerald-500",
-    link: "/book"
+    link: "/customer"
   },
   {
     icon: Truck,
@@ -48,7 +48,7 @@ const roles = [
     description: "Fleet supply, booking execution, and performance monitoring for fleet owners.",
     features: ["Fleet Onboarding", "Booking Management", "Route Pricing", "Performance Dashboard"],
     color: "from-rose-500 to-pink-500",
-    link: "/dashboard"
+    link: "/provider"
   }
 ];
 

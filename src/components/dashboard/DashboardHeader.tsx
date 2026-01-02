@@ -1,7 +1,20 @@
 import { Bell, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DashboardHeader = () => {
+interface DashboardHeaderProps {
+  role?: "admin" | "support" | "affiliate" | "customer" | "provider";
+}
+
+const roleLabels = {
+  admin: { title: "Admin User", subtitle: "admin@translogic.io" },
+  support: { title: "Support Agent", subtitle: "support@translogic.io" },
+  affiliate: { title: "Affiliate Partner", subtitle: "partner@translogic.io" },
+  customer: { title: "Customer", subtitle: "customer@translogic.io" },
+  provider: { title: "Fleet Provider", subtitle: "provider@translogic.io" },
+};
+
+const DashboardHeader = ({ role = "admin" }: DashboardHeaderProps) => {
+  const { title, subtitle } = roleLabels[role];
   return (
     <header className="h-14 sm:h-16 bg-card border-b border-border flex items-center justify-between px-4 sm:px-6 ml-12 lg:ml-0">
       {/* Search */}
@@ -25,8 +38,8 @@ const DashboardHeader = () => {
         {/* User Menu */}
         <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-border">
           <div className="hidden sm:block text-right">
-            <p className="text-sm font-medium text-foreground">Admin User</p>
-            <p className="text-xs text-muted-foreground">admin@translogic.io</p>
+            <p className="text-sm font-medium text-foreground">{title}</p>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-accent flex items-center justify-center">
             <User className="w-4 h-4 sm:w-5 sm:h-5 text-accent-foreground" />
