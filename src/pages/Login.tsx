@@ -36,19 +36,19 @@ const Login = () => {
           {/* Role Selection */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-foreground mb-3">Select your role</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {roles.map((role) => (
                 <button
                   key={role.id}
                   onClick={() => setSelectedRole(role.id)}
-                  className={`p-3 rounded-lg border text-left transition-all ${
+                  className={`p-2 sm:p-3 rounded-lg border text-left transition-all ${
                     selectedRole === role.id
                       ? "border-accent bg-accent/5 shadow-glow"
                       : "border-border hover:border-accent/50"
                   }`}
                 >
-                  <p className="text-sm font-medium text-foreground">{role.label}</p>
-                  <p className="text-xs text-muted-foreground">{role.description}</p>
+                  <p className="text-xs sm:text-sm font-medium text-foreground">{role.label}</p>
+                  <p className="text-xs text-muted-foreground hidden sm:block">{role.description}</p>
                 </button>
               ))}
             </div>
