@@ -1,0 +1,269 @@
+import { useState } from "react";
+import { MapPin, Package, Truck, ArrowRight, Calculator, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const steps = [
+  { id: 1, title: "Route", icon: MapPin },
+  { id: 2, title: "Package", icon: Package },
+  { id: 3, title: "Truck", icon: Truck },
+  { id: 4, title: "Review", icon: Calculator },
+];
+
+const truckTypes = [
+  { id: "mini", name: "Mini Truck", capacity: "500 kg", price: "₹8/km", icon: "🚛" },
+  { id: "lcv", name: "LCV", capacity: "2 Tons", price: "₹12/km", icon: "🚚" },
+  { id: "hcv", name: "HCV", capacity: "10 Tons", price: "₹25/km", icon: "🚛" },
+  { id: "container", name: "Container", capacity: "20 Tons", price: "₹40/km", icon: "📦" },
+  { id: "reefer", name: "Reefer", capacity: "8 Tons", price: "₹35/km", icon: "❄️" },
+];
+
+const BookingForm = () => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedTruck, setSelectedTruck] = useState("");
+  const [formData, setFormData] = useState({
+    origin: "",
+    destination: "",
+    stops: "",
+    weight: "",
+    dimensions: "",
+    description: ""
+  });
+
+  const handleNext = () => {
+    if (currentStep < 4) setCurrentStep(currentStep + 1);
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      {/* Progress Steps */}
+      <div className="flex items-center justify-between mb-10">
+        {steps.map((step, index) => (
+          <div key={step.id} className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300",
+                currentStep >= step.id 
+                  ? "bg-accent text-accent-foreground shadow-glow" 
+                  : "bg-muted text-muted-foreground"
+              )}>
+                {currentStep > step.id ? (
+                  <CheckCircle className="w-6 h-6" />
+                ) : (
+                  <step.icon className="w-6 h-6" />
+                )}
+              </div>
+              <span className={cn(
+                "mt-2 text-sm font-medium",
+                currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
+              )}>
+                {step.title}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div className={cn(
+                "w-24 h-0.5 mx-4 transition-colors",
+                currentStep > step.id ? "bg-accent" : "bg-border"
+              )} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Form Content */}
+      <div className="rounded-2xl bg-card border border-border p-8">
+        {/* Step 1: Route */}
+        {currentStep === 1 && (
+          <div className="space-y-6 animate-fade-in">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Enter Route Details</h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Origin</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-success" />
+                  <input
+                    type="text"
+                    placeholder="Enter pickup location"
+                    value={formData.origin}
+                    onChange={(e) => setFormData({...formData, origin: e.target.value})}
+                    className="w-full h-12 pl-11 pr-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Destination</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-destructive" />
+                  <input
+                    type="text"
+                    placeholder="Enter drop location"
+                    value={formData.destination}
+                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
+                    className="w-full h-12 pl-11 pr-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Stops (Optional)</label>
+              <input
+                type="text"
+                placeholder="Add intermediate stops, comma separated"
+                value={formData.stops}
+                onChange={(e) => setFormData({...formData, stops: e.target.value})}
+                className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Package */}
+        {currentStep === 2 && (
+          <div className="space-y-6 animate-fade-in">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Package Details</h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Weight (kg)</label>
+                <input
+                  type="number"
+                  placeholder="Enter weight"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Dimensions (L×W×H cm)</label>
+                <input
+                  type="text"
+                  placeholder="e.g., 100×50×50"
+                  value={formData.dimensions}
+                  onChange={(e) => setFormData({...formData, dimensions: e.target.value})}
+                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Description</label>
+              <textarea
+                placeholder="Describe your shipment"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                rows={4}
+                className="w-full px-4 py-3 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all resize-none"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Truck Selection */}
+        {currentStep === 3 && (
+          <div className="space-y-6 animate-fade-in">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Select Truck Type</h2>
+            
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {truckTypes.map((truck) => (
+                <button
+                  key={truck.id}
+                  onClick={() => setSelectedTruck(truck.id)}
+                  className={cn(
+                    "p-5 rounded-xl border-2 text-left transition-all duration-300 hover-lift",
+                    selectedTruck === truck.id 
+                      ? "border-accent bg-accent/5 shadow-glow" 
+                      : "border-border hover:border-accent/50"
+                  )}
+                >
+                  <div className="text-3xl mb-3">{truck.icon}</div>
+                  <h3 className="font-semibold text-foreground mb-1">{truck.name}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{truck.capacity}</p>
+                  <p className="text-accent font-semibold">{truck.price}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Review */}
+        {currentStep === 4 && (
+          <div className="space-y-6 animate-fade-in">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Review & Confirm</h2>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="p-5 rounded-xl bg-muted/50 border border-border">
+                <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-accent" />
+                  Route Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-muted-foreground">Origin:</span> <span className="text-foreground">{formData.origin || "Mumbai"}</span></p>
+                  <p><span className="text-muted-foreground">Destination:</span> <span className="text-foreground">{formData.destination || "Delhi"}</span></p>
+                  <p><span className="text-muted-foreground">Distance:</span> <span className="text-foreground">1,420 km</span></p>
+                </div>
+              </div>
+
+              <div className="p-5 rounded-xl bg-muted/50 border border-border">
+                <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-accent" />
+                  Package Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-muted-foreground">Weight:</span> <span className="text-foreground">{formData.weight || "500"} kg</span></p>
+                  <p><span className="text-muted-foreground">Dimensions:</span> <span className="text-foreground">{formData.dimensions || "100×50×50"} cm</span></p>
+                  <p><span className="text-muted-foreground">Truck:</span> <span className="text-foreground">{truckTypes.find(t => t.id === selectedTruck)?.name || "HCV"}</span></p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 rounded-xl bg-accent/5 border border-accent/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-foreground mb-1">Estimated Price</h4>
+                  <p className="text-sm text-muted-foreground">Including all taxes & fees</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-accent">₹35,500</p>
+                  <p className="text-sm text-muted-foreground">ETA: 24-36 hours</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+          <Button 
+            variant="outline" 
+            onClick={handleBack}
+            disabled={currentStep === 1}
+          >
+            Back
+          </Button>
+          
+          {currentStep < 4 ? (
+            <Button variant="accent" onClick={handleNext}>
+              Continue
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          ) : (
+            <Button variant="accent" size="lg">
+              Confirm Booking
+              <CheckCircle className="w-5 h-5 ml-2" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BookingForm;
