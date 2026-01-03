@@ -1,10 +1,19 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, Truck, ChevronDown } from "lucide-react";
+import { Menu, X, Truck, ChevronDown, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
@@ -30,16 +39,41 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
-            <Link to="/login">
-              <Button variant="ghost" size="default">
-                Sign In
-              </Button>
-            </Link>
-            <Link to="/dashboard">
-              <Button variant="accent" size="default">
-                Get Started
-              </Button>
-            </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="default" className="gap-2">
+                    <User className="w-4 h-4" />
+                    <span className="max-w-[150px] truncate">{user.email}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem asChild>
+                    <Link to="/customer" className="cursor-pointer">
+                      My Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" size="default">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/book">
+                  <Button variant="accent" size="default">
+                    Book Now
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -60,12 +94,26 @@ const Header = () => {
               <MobileNavItem label="Pricing" />
               <MobileNavItem label="Resources" />
               <div className="pt-4 border-t border-border flex flex-col gap-3">
-                <Link to="/login">
-                  <Button variant="outline" className="w-full">Sign In</Button>
-                </Link>
-                <Link to="/dashboard">
-                  <Button variant="accent" className="w-full">Get Started</Button>
-                </Link>
+                {user ? (
+                  <>
+                    <Link to="/customer">
+                      <Button variant="outline" className="w-full">My Dashboard</Button>
+                    </Link>
+                    <Button variant="ghost" className="w-full text-destructive" onClick={signOut}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/auth">
+                      <Button variant="outline" className="w-full">Sign In</Button>
+                    </Link>
+                    <Link to="/book">
+                      <Button variant="accent" className="w-full">Book Now</Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
