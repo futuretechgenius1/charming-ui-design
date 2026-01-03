@@ -1,10 +1,9 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, Play, Truck, MapPin, Package } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Truck, MapPin, Package } from "lucide-react";
+import BookingSearch from "./BookingSearch";
 
 const Hero = () => {
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+    <section className="relative min-h-screen flex items-center pt-20 pb-10 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 hero-gradient" />
       
@@ -31,42 +30,30 @@ const Hero = () => {
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 sm:mb-8 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-accent/10 border border-accent/20 mb-4 sm:mb-6 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <span className="text-accent text-xs sm:text-sm font-medium">AI-Powered Logistics Platform</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold text-primary-foreground leading-tight mb-4 sm:mb-6 animate-slide-up">
-            Transform Your
-            <span className="block text-gradient">Transportation</span>
-            Operations
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-primary-foreground leading-tight mb-3 sm:mb-4 animate-slide-up">
+            Book Your Shipment
+            <span className="block text-gradient">In Minutes</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-base sm:text-lg md:text-xl text-primary-foreground/70 max-w-2xl mx-auto mb-8 sm:mb-10 px-2 animate-slide-up animation-delay-100">
-            Unified digital ecosystem for route-based logistics, dynamic pricing, 
-            fleet management, and real-time tracking — all in one platform.
+          <p className="text-sm sm:text-base md:text-lg text-primary-foreground/70 max-w-2xl mx-auto mb-6 sm:mb-8 px-2 animate-slide-up animation-delay-100">
+            Search routes, compare truck options, get instant pricing, and book 
+            with real-time tracking — all on one platform.
           </p>
 
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 animate-slide-up animation-delay-200 px-4 sm:px-0">
-            <Link to="/dashboard" className="w-full sm:w-auto">
-              <Button variant="hero" size="xl" className="w-full sm:w-auto">
-                Start Free Trial
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Button variant="hero-outline" size="xl" className="w-full sm:w-auto">
-              <Play className="w-5 h-5" />
-              Watch Demo
-            </Button>
-          </div>
+          {/* Booking Search Form */}
+          <BookingSearch />
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 sm:gap-8 mt-10 sm:mt-16 pt-8 sm:pt-16 border-t border-primary-foreground/10 animate-slide-up animation-delay-300">
+          <div className="grid grid-cols-3 gap-4 sm:gap-8 mt-8 sm:mt-12 pt-6 sm:pt-10 border-t border-primary-foreground/10 animate-slide-up animation-delay-300">
             <StatItem value="10K+" label="Active Shipments" />
             <StatItem value="99.9%" label="Uptime" />
             <StatItem value="500+" label="Fleet Partners" />
