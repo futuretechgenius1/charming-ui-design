@@ -16,7 +16,7 @@ const roles = [
     description: "Platform control, pricing governance, user management, and complete system visibility.",
     features: ["User & Access Management", "Fleet Configuration", "Pricing Controls", "Booking Governance"],
     color: "from-blue-500 to-blue-600",
-    link: "/dashboard"
+    link: "/admin"
   },
   {
     icon: Headphones,

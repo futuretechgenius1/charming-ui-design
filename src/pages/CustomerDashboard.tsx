@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Package, 
   MapPin, 
@@ -9,52 +10,148 @@ import {
   Truck,
   CheckCircle,
   AlertCircle,
-  Navigation
+  Navigation,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import StatsCard from "@/components/dashboard/StatsCard";
+import LiveTrackingMap from "@/components/tracking/LiveTrackingMap";
 import customerHero from "@/assets/customer-hero.png";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-const myBookings = [
-  {
-    id: "BK-2024201",
-    route: "Mumbai → Delhi",
-    status: "in_transit",
-    truck: "Container",
-    eta: "2h 30m",
-    progress: 65,
-    price: "₹45,000"
-  },
-  {
-    id: "BK-2024195",
-    route: "Bangalore → Chennai",
-    status: "delivered",
-    truck: "LCV",
-    eta: "Delivered",
-    progress: 100,
-    price: "₹12,500"
-  },
-  {
-    id: "BK-2024188",
-    route: "Kolkata → Hyderabad",
-    status: "pending",
-    truck: "HCV",
-    eta: "Scheduled",
-    progress: 0,
-    price: "₹78,000"
-  },
-];
-
-const trackingSteps = [
-  { label: "Order Placed", completed: true, time: "Jan 1, 10:00 AM" },
-  { label: "Picked Up", completed: true, time: "Jan 1, 2:30 PM" },
-  { label: "In Transit", completed: true, current: true, time: "Jan 2, 8:00 AM" },
-  { label: "Out for Delivery", completed: false, time: "Expected" },
-  { label: "Delivered", completed: false, time: "Expected" },
-];
+interface Booking {
+  id: string;
+  booking_number: string;
+  origin: string;
+  destination: string;
+  origin_lat: number | null;
+  origin_lng: number | null;
+  destination_lat: number | null;
+  destination_lng: number | null;
+  status: string | null;
+  total_price: number | null;
+  pickup_date: string;
+  distance_km: number | null;
+  estimated_hours: number | null;
+  created_at: string | null;
+}
 
 const CustomerDashboard = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTracking, setSelectedTracking] = useState<Booking | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+      return;
+    }
+
+    if (user) {
+      fetchBookings();
+      
+      // Subscribe to real-time updates
+      const channel = supabase
+        .channel('customer-bookings')
+        .on(
+          'postgres_changes',
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'bookings',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            if (payload.eventType === 'INSERT') {
+              setBookings(prev => [payload.new as Booking, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              setBookings(prev => prev.map(b => 
+                b.id === (payload.new as Booking).id ? payload.new as Booking : b
+              ));
+              // Update selected tracking if it matches
+              if (selectedTracking?.id === (payload.new as Booking).id) {
+                setSelectedTracking(payload.new as Booking);
+              }
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, authLoading, navigate]);
+
+  const fetchBookings = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      if (data) {
+        setBookings(data);
+        // Auto-select first in-transit booking for tracking
+        const inTransit = data.find(b => b.status === 'in_transit');
+        if (inTransit) setSelectedTracking(inTransit);
+      }
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getProgress = (status: string | null) => {
+    switch (status) {
+      case 'pending': return 10;
+      case 'confirmed': return 25;
+      case 'in_transit': return 65;
+      case 'delivered': return 100;
+      case 'cancelled': return 0;
+      default: return 0;
+    }
+  };
+
+  const getStatusInfo = (status: string | null) => {
+    switch (status) {
+      case 'pending': return { icon: Clock, color: 'text-muted-foreground', bg: 'bg-muted' };
+      case 'confirmed': return { icon: CheckCircle, color: 'text-blue-500', bg: 'bg-blue-500/10' };
+      case 'in_transit': return { icon: Truck, color: 'text-warning', bg: 'bg-warning/10' };
+      case 'delivered': return { icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' };
+      case 'cancelled': return { icon: AlertCircle, color: 'text-destructive', bg: 'bg-destructive/10' };
+      default: return { icon: Clock, color: 'text-muted-foreground', bg: 'bg-muted' };
+    }
+  };
+
+  const stats = {
+    total: bookings.length,
+    inTransit: bookings.filter(b => b.status === 'in_transit').length,
+    delivered: bookings.filter(b => b.status === 'delivered').length,
+    totalSpent: bookings
+      .filter(b => b.status !== 'cancelled')
+      .reduce((acc, b) => acc + (b.total_price || 0), 0),
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <RefreshCw className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
   return (
     <DashboardLayout role="customer">
       <div className="space-y-6">
@@ -85,7 +182,7 @@ const CustomerDashboard = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           <StatsCard
             title="Total Shipments"
-            value="24"
+            value={stats.total.toString()}
             change="All time"
             changeType="neutral"
             icon={Package}
@@ -93,7 +190,7 @@ const CustomerDashboard = () => {
           />
           <StatsCard
             title="In Transit"
-            value="3"
+            value={stats.inTransit.toString()}
             change="Active now"
             changeType="neutral"
             icon={Truck}
@@ -101,15 +198,15 @@ const CustomerDashboard = () => {
           />
           <StatsCard
             title="Delivered"
-            value="20"
-            change="98% on time"
+            value={stats.delivered.toString()}
+            change="Completed"
             changeType="positive"
             icon={CheckCircle}
             iconColor="bg-success/10 text-success"
           />
           <StatsCard
             title="Total Spent"
-            value="₹8.5L"
+            value={`₹${(stats.totalSpent / 1000).toFixed(1)}K`}
             change="This year"
             changeType="neutral"
             icon={TrendingUp}
@@ -123,71 +220,87 @@ const CustomerDashboard = () => {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">Recent Bookings</h3>
-              <Button variant="ghost" size="sm">
-                View All
-                <ArrowRight className="w-4 h-4 ml-1" />
+              <Button variant="ghost" size="sm" onClick={fetchBookings}>
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Refresh
               </Button>
             </div>
             
-            {myBookings.map((booking) => (
-              <div key={booking.id} className="rounded-xl sm:rounded-2xl bg-card border border-border p-4 sm:p-6 hover:shadow-medium transition-all">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      booking.status === 'in_transit' ? 'bg-warning/10' :
-                      booking.status === 'delivered' ? 'bg-success/10' :
-                      'bg-muted'
-                    }`}>
-                      {booking.status === 'in_transit' ? <Truck className="w-5 h-5 text-warning" /> :
-                       booking.status === 'delivered' ? <CheckCircle className="w-5 h-5 text-success" /> :
-                       <Clock className="w-5 h-5 text-muted-foreground" />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-accent">{booking.id}</p>
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <MapPin className="w-3 h-3" />
-                        {booking.route}
+            {loading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading...</div>
+            ) : bookings.length === 0 ? (
+              <div className="text-center py-12 rounded-2xl bg-card border border-border">
+                <Package className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground mb-4">No bookings yet</p>
+                <Link to="/book">
+                  <Button variant="accent">Book Your First Shipment</Button>
+                </Link>
+              </div>
+            ) : (
+              bookings.map((booking) => {
+                const statusInfo = getStatusInfo(booking.status);
+                const StatusIcon = statusInfo.icon;
+                
+                return (
+                  <div key={booking.id} className="rounded-xl sm:rounded-2xl bg-card border border-border p-4 sm:p-6 hover:shadow-medium transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${statusInfo.bg}`}>
+                          <StatusIcon className={`w-5 h-5 ${statusInfo.color}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-accent">{booking.booking_number}</p>
+                          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <MapPin className="w-3 h-3" />
+                            {booking.origin} → {booking.destination}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2.5 py-1 rounded-full ${statusInfo.bg} ${statusInfo.color}`}>
+                          {booking.status?.replace('_', ' ') || 'pending'}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          ₹{(booking.total_price || 0).toLocaleString()}
+                        </span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2.5 py-1 rounded-full ${
-                      booking.status === 'in_transit' ? 'bg-warning/10 text-warning' :
-                      booking.status === 'delivered' ? 'bg-success/10 text-success' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
-                      {booking.status.replace('_', ' ')}
-                    </span>
-                    <span className="text-sm font-semibold text-foreground">{booking.price}</span>
-                  </div>
-                </div>
 
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span>{booking.truck}</span>
-                    <span>{booking.eta}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full transition-all ${
-                        booking.status === 'delivered' ? 'bg-success' :
-                        booking.status === 'in_transit' ? 'bg-warning' :
-                        'bg-muted-foreground'
-                      }`}
-                      style={{ width: `${booking.progress}%` }}
-                    />
-                  </div>
-                </div>
+                    {/* Progress Bar */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                        <span>{booking.pickup_date}</span>
+                        <span>{booking.estimated_hours ? `~${Math.round(booking.estimated_hours)}h` : 'ETA pending'}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            booking.status === 'delivered' ? 'bg-success' :
+                            booking.status === 'in_transit' ? 'bg-warning' :
+                            booking.status === 'confirmed' ? 'bg-blue-500' :
+                            'bg-muted-foreground'
+                          }`}
+                          style={{ width: `${getProgress(booking.status)}%` }}
+                        />
+                      </div>
+                    </div>
 
-                {booking.status === 'in_transit' && (
-                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Track Live
-                  </Button>
-                )}
-              </div>
-            ))}
+                    {(booking.status === 'in_transit' || booking.status === 'confirmed') && 
+                     booking.origin_lat && booking.destination_lat && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full sm:w-auto"
+                        onClick={() => setSelectedTracking(booking)}
+                      >
+                        <Navigation className="w-4 h-4 mr-2" />
+                        Track Live
+                      </Button>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
 
           {/* Right Column */}
@@ -196,37 +309,36 @@ const CustomerDashboard = () => {
             <div className="rounded-xl sm:rounded-2xl bg-card border border-border p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Live Tracking</h3>
-                <span className="text-xs text-accent font-medium">BK-2024201</span>
+                {selectedTracking && (
+                  <span className="text-xs text-accent font-medium">{selectedTracking.booking_number}</span>
+                )}
               </div>
               
-              {/* Tracking Steps */}
-              <div className="space-y-4">
-                {trackingSteps.map((step, i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                        step.completed ? 'bg-accent' : 'bg-muted'
-                      }`}>
-                        {step.completed ? (
-                          <CheckCircle className="w-4 h-4 text-accent-foreground" />
-                        ) : (
-                          <div className="w-2 h-2 rounded-full bg-muted-foreground" />
-                        )}
-                      </div>
-                      {i < trackingSteps.length - 1 && (
-                        <div className={`w-0.5 h-8 ${step.completed ? 'bg-accent' : 'bg-muted'}`} />
-                      )}
-                    </div>
-                    <div className="flex-1 pb-4">
-                      <p className={`text-sm font-medium ${step.current ? 'text-accent' : 'text-foreground'}`}>
-                        {step.label}
-                        {step.current && <span className="ml-2 text-xs">●</span>}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{step.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {selectedTracking && 
+               selectedTracking.origin_lat && selectedTracking.destination_lat &&
+               selectedTracking.origin_lng && selectedTracking.destination_lng ? (
+                <LiveTrackingMap
+                  bookingId={selectedTracking.booking_number}
+                  origin={{
+                    lat: selectedTracking.origin_lat,
+                    lng: selectedTracking.origin_lng,
+                    name: selectedTracking.origin,
+                  }}
+                  destination={{
+                    lat: selectedTracking.destination_lat,
+                    lng: selectedTracking.destination_lng,
+                    name: selectedTracking.destination,
+                  }}
+                  progress={getProgress(selectedTracking.status)}
+                  status={selectedTracking.status || 'pending'}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Navigation className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">No active shipment to track</p>
+                  <p className="text-xs mt-1">Book a shipment to see live tracking</p>
+                </div>
+              )}
             </div>
 
             {/* Quick Actions */}
@@ -243,9 +355,9 @@ const CustomerDashboard = () => {
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Report an Issue
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={fetchBookings}>
                   <Clock className="w-4 h-4 mr-2" />
-                  View Booking History
+                  Refresh Bookings
                 </Button>
               </div>
             </div>
