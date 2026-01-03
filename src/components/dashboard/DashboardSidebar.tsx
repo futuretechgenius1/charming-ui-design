@@ -61,7 +61,17 @@ const getMenuItems = (role: string) => {
         { icon: MapPin, label: "Routes", path: "/provider/routes" },
         { icon: DollarSign, label: "Earnings", path: "/provider/earnings" },
       ];
-    default: // admin
+    case "admin":
+      return [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+        { icon: Package, label: "Bookings", path: "/admin/bookings" },
+        { icon: Truck, label: "Fleet", path: "/admin/fleet" },
+        { icon: MapPin, label: "Routes", path: "/admin/routes" },
+        { icon: Calculator, label: "Pricing", path: "/admin/pricing" },
+        { icon: Users, label: "Users", path: "/admin/users" },
+        { icon: BarChart3, label: "Analytics", path: "/admin/analytics" },
+      ];
+    default:
       return [
         { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
         { icon: Package, label: "Bookings", path: "/dashboard/bookings" },

@@ -14,6 +14,7 @@ import SupportDashboard from "./pages/SupportDashboard";
 import AffiliateDashboard from "./pages/AffiliateDashboard";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import ProviderDashboard from "./pages/ProviderDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,8 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/auth" element={<Auth />} />
             {/* Role-based dashboards */}
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/*" element={<AdminDashboard />} />
             <Route path="/support" element={<SupportDashboard />} />
             <Route path="/support/*" element={<SupportDashboard />} />
             <Route path="/affiliate" element={<AffiliateDashboard />} />
