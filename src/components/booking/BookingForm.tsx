@@ -1,7 +1,12 @@
-import { useState } from "react";
-import { MapPin, Package, Truck, ArrowRight, Calculator, CheckCircle } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { MapPin, Package, Truck, ArrowRight, Calculator, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import RouteMap from "./RouteMap";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const steps = [
   { id: 1, title: "Route", icon: MapPin },
@@ -11,24 +16,45 @@ const steps = [
 ];
 
 const truckTypes = [
-  { id: "mini", name: "Mini Truck", capacity: "500 kg", price: "₹8/km", icon: "🚛" },
-  { id: "lcv", name: "LCV", capacity: "2 Tons", price: "₹12/km", icon: "🚚" },
-  { id: "hcv", name: "HCV", capacity: "10 Tons", price: "₹25/km", icon: "🚛" },
-  { id: "container", name: "Container", capacity: "20 Tons", price: "₹40/km", icon: "📦" },
-  { id: "reefer", name: "Reefer", capacity: "8 Tons", price: "₹35/km", icon: "❄️" },
+  { id: "mini", name: "Mini Truck", capacity: "500 kg", pricePerKm: 15, icon: "🚐" },
+  { id: "lcv", name: "LCV", capacity: "1.5 Tons", pricePerKm: 22, icon: "🚛" },
+  { id: "hcv", name: "HCV", capacity: "5 Tons", pricePerKm: 35, icon: "🚚" },
+  { id: "container", name: "Container", capacity: "20 Tons", pricePerKm: 55, icon: "📦" },
+  { id: "reefer", name: "Reefer", capacity: "10 Tons", pricePerKm: 65, icon: "❄️" },
 ];
 
 const BookingForm = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTruck, setSelectedTruck] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{
+    distance: number;
+    duration: number;
+    originCoords: [number, number];
+    destCoords: [number, number];
+  } | null>(null);
+  
   const [formData, setFormData] = useState({
-    origin: "",
-    destination: "",
+    origin: searchParams.get("origin") || "",
+    destination: searchParams.get("destination") || "",
+    pickupDate: searchParams.get("date") || "",
     stops: "",
     weight: "",
-    dimensions: "",
+    length: "",
+    width: "",
+    height: "",
     description: ""
   });
+
+  useEffect(() => {
+    const truckParam = searchParams.get("truckType");
+    if (truckParam) {
+      setSelectedTruck(truckParam);
+    }
+  }, [searchParams]);
 
   const handleNext = () => {
     if (currentStep < 4) setCurrentStep(currentStep + 1);
@@ -36,6 +62,79 @@ const BookingForm = () => {
 
   const handleBack = () => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
+
+  const handleRouteCalculated = useCallback((data: {
+    distance: number;
+    duration: number;
+    originCoords: [number, number];
+    destCoords: [number, number];
+  }) => {
+    setRouteInfo(data);
+  }, []);
+
+  const calculatePrice = () => {
+    if (!routeInfo || !selectedTruck) return 0;
+    const truck = truckTypes.find(t => t.id === selectedTruck);
+    if (!truck) return 0;
+    return Math.round(routeInfo.distance * truck.pricePerKm);
+  };
+
+  const formatDuration = (hours: number) => {
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      toast.error("Please sign in to book a shipment");
+      navigate("/auth");
+      return;
+    }
+
+    if (!formData.pickupDate) {
+      toast.error("Please select a pickup date");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Generate a temporary booking number (will be replaced by trigger)
+      const tempBookingNumber = `BK${Date.now()}`;
+      
+      const { error } = await supabase.from("bookings").insert({
+        booking_number: tempBookingNumber,
+        user_id: user.id,
+        origin: formData.origin,
+        destination: formData.destination,
+        origin_lat: routeInfo?.originCoords[1],
+        origin_lng: routeInfo?.originCoords[0],
+        destination_lat: routeInfo?.destCoords[1],
+        destination_lng: routeInfo?.destCoords[0],
+        pickup_date: formData.pickupDate,
+        package_weight: formData.weight ? parseFloat(formData.weight) : null,
+        package_length: formData.length ? parseFloat(formData.length) : null,
+        package_width: formData.width ? parseFloat(formData.width) : null,
+        package_height: formData.height ? parseFloat(formData.height) : null,
+        package_description: formData.description,
+        distance_km: routeInfo?.distance,
+        estimated_hours: routeInfo?.duration,
+        total_price: calculatePrice(),
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      toast.success("Booking confirmed! You can track it in your dashboard.");
+      navigate("/customer");
+    } catch (err) {
+      console.error("Booking error:", err);
+      toast.error("Failed to create booking. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -112,15 +211,21 @@ const BookingForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">Stops (Optional)</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Pickup Date</label>
               <input
-                type="text"
-                placeholder="Add intermediate stops, comma separated"
-                value={formData.stops}
-                onChange={(e) => setFormData({...formData, stops: e.target.value})}
-                className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                type="date"
+                value={formData.pickupDate}
+                onChange={(e) => setFormData({...formData, pickupDate: e.target.value})}
+                className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
               />
             </div>
+
+            {/* Route Map */}
+            <RouteMap 
+              origin={formData.origin} 
+              destination={formData.destination}
+              onRouteCalculated={handleRouteCalculated}
+            />
           </div>
         )}
 
@@ -141,15 +246,37 @@ const BookingForm = () => {
                 />
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Dimensions (L×W×H cm)</label>
-                <input
-                  type="text"
-                  placeholder="e.g., 100×50×50"
-                  value={formData.dimensions}
-                  onChange={(e) => setFormData({...formData, dimensions: e.target.value})}
-                  className="w-full h-12 px-4 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
-                />
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Length (cm)</label>
+                  <input
+                    type="number"
+                    placeholder="L"
+                    value={formData.length}
+                    onChange={(e) => setFormData({...formData, length: e.target.value})}
+                    className="w-full h-12 px-3 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Width</label>
+                  <input
+                    type="number"
+                    placeholder="W"
+                    value={formData.width}
+                    onChange={(e) => setFormData({...formData, width: e.target.value})}
+                    className="w-full h-12 px-3 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Height</label>
+                  <input
+                    type="number"
+                    placeholder="H"
+                    value={formData.height}
+                    onChange={(e) => setFormData({...formData, height: e.target.value})}
+                    className="w-full h-12 px-3 rounded-lg bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                  />
+                </div>
               </div>
             </div>
 
@@ -186,7 +313,7 @@ const BookingForm = () => {
                   <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">{truck.icon}</div>
                   <h3 className="text-sm sm:text-base font-semibold text-foreground mb-1">{truck.name}</h3>
                   <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">{truck.capacity}</p>
-                  <p className="text-accent text-sm sm:text-base font-semibold">{truck.price}</p>
+                  <p className="text-accent text-sm sm:text-base font-semibold">₹{truck.pricePerKm}/km</p>
                 </button>
               ))}
             </div>
@@ -198,6 +325,13 @@ const BookingForm = () => {
           <div className="space-y-4 sm:space-y-6 animate-fade-in">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Review & Confirm</h2>
             
+            {/* Map Preview */}
+            <RouteMap 
+              origin={formData.origin} 
+              destination={formData.destination}
+              onRouteCalculated={handleRouteCalculated}
+            />
+            
             <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
               <div className="p-5 rounded-xl bg-muted/50 border border-border">
                 <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -205,9 +339,11 @@ const BookingForm = () => {
                   Route Details
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-muted-foreground">Origin:</span> <span className="text-foreground">{formData.origin || "Mumbai"}</span></p>
-                  <p><span className="text-muted-foreground">Destination:</span> <span className="text-foreground">{formData.destination || "Delhi"}</span></p>
-                  <p><span className="text-muted-foreground">Distance:</span> <span className="text-foreground">1,420 km</span></p>
+                  <p><span className="text-muted-foreground">Origin:</span> <span className="text-foreground">{formData.origin || "Not set"}</span></p>
+                  <p><span className="text-muted-foreground">Destination:</span> <span className="text-foreground">{formData.destination || "Not set"}</span></p>
+                  <p><span className="text-muted-foreground">Distance:</span> <span className="text-foreground">{routeInfo ? `${routeInfo.distance.toFixed(1)} km` : "Calculating..."}</span></p>
+                  <p><span className="text-muted-foreground">Est. Time:</span> <span className="text-foreground">{routeInfo ? formatDuration(routeInfo.duration) : "Calculating..."}</span></p>
+                  <p><span className="text-muted-foreground">Pickup Date:</span> <span className="text-foreground">{formData.pickupDate || "Not set"}</span></p>
                 </div>
               </div>
 
@@ -217,9 +353,9 @@ const BookingForm = () => {
                   Package Details
                 </h4>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-muted-foreground">Weight:</span> <span className="text-foreground">{formData.weight || "500"} kg</span></p>
-                  <p><span className="text-muted-foreground">Dimensions:</span> <span className="text-foreground">{formData.dimensions || "100×50×50"} cm</span></p>
-                  <p><span className="text-muted-foreground">Truck:</span> <span className="text-foreground">{truckTypes.find(t => t.id === selectedTruck)?.name || "HCV"}</span></p>
+                  <p><span className="text-muted-foreground">Weight:</span> <span className="text-foreground">{formData.weight || "N/A"} kg</span></p>
+                  <p><span className="text-muted-foreground">Dimensions:</span> <span className="text-foreground">{formData.length && formData.width && formData.height ? `${formData.length}×${formData.width}×${formData.height} cm` : "N/A"}</span></p>
+                  <p><span className="text-muted-foreground">Truck:</span> <span className="text-foreground">{truckTypes.find(t => t.id === selectedTruck)?.name || "Not selected"}</span></p>
                 </div>
               </div>
             </div>
@@ -231,11 +367,23 @@ const BookingForm = () => {
                   <p className="text-sm text-muted-foreground">Including all taxes & fees</p>
                 </div>
                 <div className="text-left sm:text-right">
-                  <p className="text-2xl sm:text-3xl font-bold text-accent">₹35,500</p>
-                  <p className="text-sm text-muted-foreground">ETA: 24-36 hours</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-accent">
+                    ₹{calculatePrice().toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    ETA: {routeInfo ? formatDuration(routeInfo.duration) : "Calculating..."}
+                  </p>
                 </div>
               </div>
             </div>
+
+            {!user && (
+              <div className="p-4 rounded-xl bg-warning/10 border border-warning/30 text-center">
+                <p className="text-sm text-warning-foreground">
+                  Please <a href="/auth" className="text-accent underline font-medium">sign in</a> to confirm your booking
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -256,9 +404,21 @@ const BookingForm = () => {
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
-            <Button variant="accent" size="lg" className="flex-1 sm:flex-none">
-              Confirm Booking
-              <CheckCircle className="w-5 h-5 ml-2" />
+            <Button 
+              variant="accent" 
+              size="lg" 
+              className="flex-1 sm:flex-none"
+              onClick={handleConfirmBooking}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  Confirm Booking
+                  <CheckCircle className="w-5 h-5 ml-2" />
+                </>
+              )}
             </Button>
           )}
         </div>
